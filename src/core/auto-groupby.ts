@@ -77,8 +77,8 @@ function extractGroupByColumns(columns: any[]): any[] {
  */
 export function addAutoGroupBy(sql: string): string {
   try {
-    // Parse the SQL
-    const ast = parser.astify(sql, { database: 'sqlite' });
+    // Parse the SQL - using MySQL dialect for cleaner output (backticks instead of double quotes)
+    const ast = parser.astify(sql, { database: 'mysql' });
 
     // Handle both single statement and array of statements
     const statements = Array.isArray(ast) ? ast : [ast];
@@ -116,8 +116,8 @@ export function addAutoGroupBy(sql: string): string {
       }
     }
 
-    // Convert AST back to SQL
-    const result = parser.sqlify(statements.length === 1 ? statements[0] : statements, { database: 'sqlite' });
+    // Convert AST back to SQL - MySQL dialect uses backticks which look cleaner
+    const result = parser.sqlify(statements.length === 1 ? statements[0] : statements, { database: 'mysql' });
     return result;
   } catch (error) {
     // If parsing fails, return original SQL
@@ -135,7 +135,7 @@ export function isValidSQL(sql: string): boolean {
   }
 
   try {
-    const ast = parser.astify(sql, { database: 'sqlite' });
+    const ast = parser.astify(sql, { database: 'mysql' });
     return ast !== null && ast !== undefined;
   } catch {
     return false;
