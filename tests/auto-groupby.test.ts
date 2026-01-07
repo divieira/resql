@@ -141,4 +141,132 @@ describe('Auto GROUP BY', () => {
       expect(isValidSQL('completely invalid nonsense')).toBe(false);
     });
   });
+
+  describe('Quote removal (Bug fix #1 & #4)', () => {
+    it('should remove unnecessary quotes from simple identifiers', () => {
+      const input = 'SELECT Name, COUNT(*) FROM Track';
+      const result = addAutoGroupBy(input);
+      // Should not have quotes around simple identifiers
+      expect(result).not.toMatch(/["'`]Name["'`]/);
+      expect(result).not.toMatch(/["'`]Track["'`]/);
+    });
+
+    it('should allow typing partial queries without adding quotes', () => {
+      const input = 'SELECT Name, c FROM Track';
+      const result = addAutoGroupBy(input);
+      // Should not add quotes around partial identifier 'c'
+      expect(result).not.toMatch(/["'`]c["'`]/);
+      expect(result).toContain('c');
+    });
+
+    it('should keep quotes for reserved keywords used as identifiers', () => {
+      const input = 'SELECT "select", COUNT(*) FROM Track';
+      const result = addAutoGroupBy(input);
+      // Should keep quotes for reserved keyword
+      expect(result).toMatch(/["'`]select["'`]/);
+    });
+
+    it('should handle multiple columns without unnecessary quotes', () => {
+      const input = 'SELECT AlbumId, Composer, COUNT(*) FROM Track';
+      const result = addAutoGroupBy(input);
+      // Clean output without excessive quoting
+      expect(result).toContain('AlbumId');
+      expect(result).toContain('Composer');
+      expect(result).toContain('Track');
+    });
+  });
+
+  describe('GROUP BY removal logic (Bug fix #2 & #5)', () => {
+    it('should remove GROUP BY when there are no aggregates', () => {
+      const input = 'SELECT name FROM users GROUP BY name';
+      const result = addAutoGroupBy(input);
+      // GROUP BY should be removed since there are no aggregates
+      expect(result.toLowerCase()).not.toContain('group by');
+      expect(result).toContain('name');
+    });
+
+    it('should remove GROUP BY from query with only aggregate columns', () => {
+      const input = 'SELECT COUNT(*), SUM(price) FROM products GROUP BY category';
+      const result = addAutoGroupBy(input);
+      // GROUP BY should be removed since all columns are aggregates
+      expect(result.toLowerCase()).not.toContain('group by');
+    });
+
+    it('should keep GROUP BY when there are both aggregates and non-aggregates', () => {
+      const input = 'SELECT category, COUNT(*) FROM products';
+      const result = addAutoGroupBy(input);
+      // Should add GROUP BY
+      expect(result.toLowerCase()).toContain('group by');
+      expect(result.toLowerCase()).toContain('category');
+    });
+
+    it('should remove unnecessary GROUP BY from multi-column query without aggregates', () => {
+      const input = 'SELECT name, email FROM users GROUP BY name, email';
+      const result = addAutoGroupBy(input);
+      // No aggregates, so GROUP BY should be removed
+      expect(result.toLowerCase()).not.toContain('group by');
+    });
+
+    it('should handle complex query with WHERE and remove GROUP BY if no aggregates', () => {
+      const input = 'SELECT name FROM users WHERE active = 1 GROUP BY name';
+      const result = addAutoGroupBy(input);
+      // No aggregates, GROUP BY should be removed
+      expect(result.toLowerCase()).not.toContain('group by');
+      expect(result.toLowerCase()).toContain('where');
+    });
+  });
+
+  describe('SQLite dialect compatibility (Bug fix #3)', () => {
+    it('should work with Chinook database table names', () => {
+      const input = 'SELECT Name, COUNT(*) FROM Track';
+      const result = addAutoGroupBy(input);
+      expect(result.toLowerCase()).toContain('group by');
+      expect(result).toContain('Name');
+      expect(result).toContain('Track');
+    });
+
+    it('should handle PascalCase table names correctly', () => {
+      const input = 'SELECT AlbumId, COUNT(*) FROM Track';
+      const result = addAutoGroupBy(input);
+      expect(result.toLowerCase()).toContain('group by');
+      expect(result).toContain('AlbumId');
+    });
+  });
+
+  describe('Comprehensive integration tests', () => {
+    it('should handle typing workflow: partial query to complete query', () => {
+      // Simulate user typing
+      const partial1 = 'SELECT N FROM Track';
+      const partial2 = 'SELECT Name FROM Track';
+      const partial3 = 'SELECT Name, c FROM Track';
+      const partial4 = 'SELECT Name, COUNT FROM Track';
+      const complete = 'SELECT Name, COUNT(*) FROM Track';
+
+      // All should work without errors
+      expect(() => addAutoGroupBy(partial1)).not.toThrow();
+      expect(() => addAutoGroupBy(partial2)).not.toThrow();
+      expect(() => addAutoGroupBy(partial3)).not.toThrow();
+      expect(() => addAutoGroupBy(partial4)).not.toThrow();
+
+      const result = addAutoGroupBy(complete);
+      expect(result.toLowerCase()).toContain('group by');
+      expect(result).toContain('Name');
+    });
+
+    it('should maintain clean SQL output through transformations', () => {
+      const input = 'SELECT Artist, Album, COUNT(*) FROM Track';
+      const result = addAutoGroupBy(input);
+
+      // Should have GROUP BY
+      expect(result.toLowerCase()).toContain('group by');
+
+      // Should have both columns in GROUP BY
+      expect(result.toLowerCase()).toContain('artist');
+      expect(result.toLowerCase()).toContain('album');
+
+      // Should not have excessive quotes
+      const quoteCount = (result.match(/["'`]/g) || []).length;
+      expect(quoteCount).toBeLessThan(6); // Allow some quotes but not excessive
+    });
+  });
 });
