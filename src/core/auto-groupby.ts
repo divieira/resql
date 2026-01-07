@@ -73,6 +73,47 @@ function extractGroupByColumns(columns: any[]): any[] {
 }
 
 /**
+ * SQL reserved keywords that should remain quoted
+ */
+const SQL_RESERVED_KEYWORDS = new Set([
+  'SELECT', 'FROM', 'WHERE', 'GROUP', 'ORDER', 'BY', 'HAVING', 'LIMIT', 'OFFSET',
+  'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER', 'TABLE', 'INDEX',
+  'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'AS', 'AND', 'OR', 'NOT',
+  'IN', 'EXISTS', 'BETWEEN', 'LIKE', 'IS', 'NULL', 'TRUE', 'FALSE', 'CASE',
+  'WHEN', 'THEN', 'ELSE', 'END', 'DISTINCT', 'ALL', 'ANY', 'SOME', 'UNION',
+  'INTERSECT', 'EXCEPT', 'VALUES', 'SET', 'DEFAULT', 'PRIMARY', 'FOREIGN',
+  'KEY', 'REFERENCES', 'CHECK', 'UNIQUE', 'CONSTRAINT', 'CASCADE', 'RESTRICT'
+]);
+
+/**
+ * Remove unnecessary quotes from SQL identifiers
+ * Removes backticks, double quotes, or square brackets from simple identifiers
+ * Keeps quotes for reserved keywords or identifiers with special characters
+ */
+function removeUnnecessaryQuotes(sql: string): string {
+  // Pattern to match quoted identifiers: backticks, double quotes, or square brackets
+  // Captures the content within the quotes
+  return sql.replace(/([`"\[])([\w]+)([`"\]])/g, (match, openQuote, identifier, closeQuote) => {
+    // Check if opening and closing quotes match
+    if ((openQuote === '`' && closeQuote === '`') ||
+        (openQuote === '"' && closeQuote === '"') ||
+        (openQuote === '[' && closeQuote === ']')) {
+
+      // Check if identifier needs quotes
+      const needsQuotes =
+        SQL_RESERVED_KEYWORDS.has(identifier.toUpperCase()) || // Reserved keyword
+        /^\d/.test(identifier) || // Starts with a number
+        /[^a-zA-Z0-9_]/.test(identifier); // Contains special characters
+
+      // Return unquoted if safe, otherwise keep the quotes
+      return needsQuotes ? match : identifier;
+    }
+
+    return match; // Keep as-is if quotes don't match
+  });
+}
+
+/**
  * Add auto GROUP BY to a SQL query
  */
 export function addAutoGroupBy(sql: string): string {
@@ -114,9 +155,11 @@ export function addAutoGroupBy(sql: string): string {
       }
     }
 
-    // Convert AST back to SQL - MySQL dialect uses backticks which look cleaner
+    // Convert AST back to SQL - MySQL dialect uses backticks
     const result = parser.sqlify(statements.length === 1 ? statements[0] : statements, { database: 'mysql' });
-    return result;
+
+    // Remove unnecessary quotes from identifiers for cleaner output
+    return removeUnnecessaryQuotes(result);
   } catch (error) {
     // If parsing fails, return original SQL
     console.error('Parse error:', error);
