@@ -89,11 +89,6 @@ export function addAutoGroupBy(sql: string): string {
         continue;
       }
 
-      // Skip if already has GROUP BY
-      if (stmt.groupby) {
-        continue;
-      }
-
       const columns = stmt.columns;
       if (!columns || columns.length === 0) {
         continue;
@@ -106,12 +101,15 @@ export function addAutoGroupBy(sql: string): string {
         // Extract non-aggregate columns for GROUP BY
         const groupByExprs = extractGroupByColumns(columns);
 
-        // Only add GROUP BY if we have non-aggregate columns
+        // Add GROUP BY if we have non-aggregate columns, remove it if we don't
         if (groupByExprs.length > 0) {
           stmt.groupby = {
             columns: groupByExprs,
             modifiers: []
           };
+        } else {
+          // Only aggregates - remove GROUP BY if it exists
+          stmt.groupby = null;
         }
       }
     }
