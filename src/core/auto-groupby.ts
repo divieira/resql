@@ -118,8 +118,8 @@ function removeUnnecessaryQuotes(sql: string): string {
  */
 export function addAutoGroupBy(sql: string): string {
   try {
-    // Parse the SQL - using MySQL dialect for cleaner output (backticks instead of double quotes)
-    const ast = parser.astify(sql, { database: 'mysql' });
+    // Parse the SQL using SQLite dialect
+    const ast = parser.astify(sql, { database: 'sqlite' });
 
     // Handle both single statement and array of statements
     const statements = Array.isArray(ast) ? ast : [ast];
@@ -152,11 +152,14 @@ export function addAutoGroupBy(sql: string): string {
           // Only aggregates - remove GROUP BY if it exists
           (stmt as any).groupby = null;
         }
+      } else {
+        // No aggregates - remove GROUP BY if it exists
+        (stmt as any).groupby = null;
       }
     }
 
-    // Convert AST back to SQL - MySQL dialect uses backticks
-    const result = parser.sqlify(statements.length === 1 ? statements[0] : statements, { database: 'mysql' });
+    // Convert AST back to SQL using SQLite dialect
+    const result = parser.sqlify(statements.length === 1 ? statements[0] : statements, { database: 'sqlite' });
 
     // Remove unnecessary quotes from identifiers for cleaner output
     return removeUnnecessaryQuotes(result);
@@ -176,7 +179,7 @@ export function isValidSQL(sql: string): boolean {
   }
 
   try {
-    const ast = parser.astify(sql, { database: 'mysql' });
+    const ast = parser.astify(sql, { database: 'sqlite' });
     return ast !== null && ast !== undefined;
   } catch {
     return false;
