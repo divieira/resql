@@ -208,9 +208,9 @@
       <label for="sql-input">SQL Query:</label>
       <textarea
         id="sql-input"
-        placeholder="Type your SQL query here... Try: SELECT artist_name, COUNT(*) FROM artists"
+        placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
         spellcheck="false"
-      >SELECT name, COUNT(*) FROM tracks</textarea>
+      >SELECT Name, COUNT(*) FROM Track</textarea>
     </div>
 
     <div class="buttons">
@@ -225,14 +225,14 @@
 
     <div class="examples">
       <h3>Try these examples (click to load):</h3>
-      <div class="example" data-sql="SELECT Name, COUNT(*) FROM tracks">
-        Basic aggregate: SELECT Name, COUNT(*) FROM tracks
+      <div class="example" data-sql="SELECT Name, COUNT(*) FROM Track">
+        Basic aggregate: SELECT Name, COUNT(*) FROM Track
       </div>
-      <div class="example" data-sql="SELECT AlbumId, SUM(Milliseconds), AVG(Milliseconds) FROM tracks">
-        Multiple aggregates: SELECT AlbumId, SUM(Milliseconds), AVG(Milliseconds) FROM tracks
+      <div class="example" data-sql="SELECT AlbumId, SUM(Milliseconds), AVG(Milliseconds) FROM Track">
+        Multiple aggregates: SELECT AlbumId, SUM(Milliseconds), AVG(Milliseconds) FROM Track
       </div>
-      <div class="example" data-sql="SELECT Composer, MIN(Milliseconds), MAX(Milliseconds) FROM tracks WHERE Composer IS NOT NULL">
-        With WHERE: SELECT Composer, MIN(Milliseconds), MAX(Milliseconds) FROM tracks WHERE Composer IS NOT NULL
+      <div class="example" data-sql="SELECT Composer, MIN(Milliseconds), MAX(Milliseconds) FROM Track WHERE Composer IS NOT NULL">
+        With WHERE: SELECT Composer, MIN(Milliseconds), MAX(Milliseconds) FROM Track WHERE Composer IS NOT NULL
       </div>
     </div>
   </div>

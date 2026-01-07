@@ -109,7 +109,7 @@ export function addAutoGroupBy(sql: string): string {
           };
         } else {
           // Only aggregates - remove GROUP BY if it exists
-          stmt.groupby = null;
+          (stmt as any).groupby = null;
         }
       }
     }
