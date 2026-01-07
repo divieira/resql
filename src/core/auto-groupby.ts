@@ -109,7 +109,8 @@ export function addAutoGroupBy(sql: string): string {
         // Only add GROUP BY if we have non-aggregate columns
         if (groupByExprs.length > 0) {
           stmt.groupby = {
-            columns: groupByExprs
+            columns: groupByExprs,
+            modifiers: []
           };
         }
       }
