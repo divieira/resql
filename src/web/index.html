@@ -40,12 +40,37 @@
       margin-bottom: 20px;
     }
 
+    .output-section {
+      margin-top: 15px;
+      position: relative;
+    }
+
     label {
       display: block;
       margin-bottom: 8px;
       font-weight: 600;
       font-size: 14px;
       color: #9cdcfe;
+    }
+
+    .inline-btn {
+      float: right;
+      padding: 4px 10px;
+      font-size: 12px;
+      background: #3c3c3c;
+      color: #9cdcfe;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .inline-btn:hover {
+      background: #505050;
+    }
+
+    .inline-btn:active {
+      background: #2a2a2a;
     }
 
     textarea {
@@ -69,6 +94,22 @@
 
     .transformed {
       background: #1a1a1a;
+      border-color: #4ec9b0;
+    }
+
+    #sql-output {
+      background: #1a1a1a;
+      border-color: #4ec9b0;
+      cursor: default;
+      min-height: 80px;
+    }
+
+    #sql-output.transformed {
+      background: #1a3a1a;
+      border-color: #4ec9b0;
+    }
+
+    #sql-output:focus {
       border-color: #4ec9b0;
     }
 
@@ -205,12 +246,24 @@
     <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time</div>
 
     <div class="editor-section">
-      <label for="sql-input">SQL Query:</label>
+      <label for="sql-input">Original SQL:</label>
       <textarea
         id="sql-input"
         placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
         spellcheck="false"
       >SELECT Name, COUNT(*) FROM Track</textarea>
+    </div>
+
+    <div class="editor-section output-section">
+      <label for="sql-output">
+        Transformed SQL (Auto GROUP BY applied)
+        <button id="copy-to-input-btn" class="inline-btn">↑ Copy to Input</button>
+      </label>
+      <textarea
+        id="sql-output"
+        spellcheck="false"
+        readonly
+      ></textarea>
     </div>
 
     <div class="buttons">

@@ -6,8 +6,10 @@ let transformTimeout: number | null = null;
 
 // DOM elements
 const sqlInput = document.getElementById('sql-input') as HTMLTextAreaElement;
+const sqlOutput = document.getElementById('sql-output') as HTMLTextAreaElement;
 const executeBtn = document.getElementById('execute-btn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
+const copyToInputBtn = document.getElementById('copy-to-input-btn') as HTMLButtonElement;
 const resultsDiv = document.getElementById('results') as HTMLDivElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 
@@ -43,29 +45,26 @@ function transformSQL() {
   const originalSQL = sqlInput.value.trim();
 
   if (!originalSQL) {
-    sqlInput.classList.remove('transformed');
+    sqlOutput.value = '';
+    sqlOutput.classList.remove('transformed');
     return;
   }
 
   try {
     const transformedSQL = addAutoGroupBy(originalSQL);
 
-    // Only update if transformation changed the SQL
+    // Update OUTPUT textarea, not INPUT (prevents typing disruption)
+    sqlOutput.value = transformedSQL;
+
     if (transformedSQL !== originalSQL) {
-      // Save cursor position
-      const cursorPos = sqlInput.selectionStart;
-
-      sqlInput.value = transformedSQL;
-      sqlInput.classList.add('transformed');
-
-      // Restore cursor position (approximately)
-      sqlInput.setSelectionRange(cursorPos, cursorPos);
+      sqlOutput.classList.add('transformed');
     } else {
-      sqlInput.classList.remove('transformed');
+      sqlOutput.classList.remove('transformed');
     }
   } catch (error) {
     console.error('Transform error:', error);
-    sqlInput.classList.remove('transformed');
+    sqlOutput.value = originalSQL;
+    sqlOutput.classList.remove('transformed');
   }
 }
 
@@ -87,7 +86,8 @@ async function executeQuery() {
     return;
   }
 
-  const sql = sqlInput.value.trim();
+  // Use transformed SQL if available, otherwise use input
+  const sql = sqlOutput.value.trim() || sqlInput.value.trim();
 
   if (!sql) {
     showStatus('Please enter a SQL query', 'error');
@@ -163,10 +163,18 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
+// Copy transformed SQL to input
+copyToInputBtn.addEventListener('click', () => {
+  sqlInput.value = sqlOutput.value;
+  sqlInput.focus();
+  transformSQL(); // Re-transform to update output
+});
+
 // Clear input
 clearBtn.addEventListener('click', () => {
   sqlInput.value = '';
-  sqlInput.classList.remove('transformed');
+  sqlOutput.value = '';
+  sqlOutput.classList.remove('transformed');
   resultsDiv.innerHTML = '';
   hideStatus();
   sqlInput.focus();
@@ -189,7 +197,8 @@ document.querySelectorAll('.example').forEach(el => {
     const exampleSQL = el.getAttribute('data-sql');
     if (exampleSQL) {
       sqlInput.value = exampleSQL;
-      sqlInput.classList.remove('transformed');
+      sqlOutput.value = '';
+      sqlOutput.classList.remove('transformed');
       resultsDiv.innerHTML = '';
       hideStatus();
       sqlInput.focus();
