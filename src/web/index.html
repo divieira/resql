@@ -40,6 +40,11 @@
       margin-bottom: 20px;
     }
 
+    .output-section {
+      margin-top: 15px;
+      position: relative;
+    }
+
     label {
       display: block;
       margin-bottom: 8px;
@@ -48,19 +53,76 @@
       color: #9cdcfe;
     }
 
+    .inline-btn {
+      float: right;
+      padding: 4px 10px;
+      font-size: 12px;
+      background: #3c3c3c;
+      color: #9cdcfe;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .inline-btn:hover {
+      background: #505050;
+    }
+
+    .inline-btn:active {
+      background: #2a2a2a;
+    }
+
+    .editor-container {
+      position: relative;
+    }
+
+    .suggestion-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      pointer-events: none;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      color: transparent;
+      z-index: 0;
+      overflow: hidden;
+      line-height: 1.5;
+    }
+
+    .suggestion-text {
+      color: transparent;
+    }
+
+    .suggestion-addition {
+      color: #6a9955;
+      opacity: 0.5;
+    }
+
     textarea {
       width: 100%;
       min-height: 120px;
       padding: 12px;
       font-family: 'Consolas', 'Monaco', monospace;
       font-size: 14px;
-      background: #252526;
+      background: transparent;
       color: #d4d4d4;
       border: 1px solid #3c3c3c;
       border-radius: 4px;
       resize: vertical;
       outline: none;
       transition: border-color 0.2s;
+      position: relative;
+      z-index: 1;
+      line-height: 1.5;
+    }
+
+    #sql-input {
+      background: #252526;
     }
 
     textarea:focus {
@@ -69,6 +131,22 @@
 
     .transformed {
       background: #1a1a1a;
+      border-color: #4ec9b0;
+    }
+
+    #sql-output {
+      background: #1a1a1a;
+      border-color: #4ec9b0;
+      cursor: default;
+      min-height: 80px;
+    }
+
+    #sql-output.transformed {
+      background: #1a3a1a;
+      border-color: #4ec9b0;
+    }
+
+    #sql-output:focus {
       border-color: #4ec9b0;
     }
 
@@ -202,15 +280,30 @@
 <body>
   <div class="container">
     <h1>reSQL</h1>
-    <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time</div>
+    <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time (Press Tab to accept inline suggestions)</div>
 
     <div class="editor-section">
-      <label for="sql-input">SQL Query:</label>
+      <label for="sql-input">Original SQL:</label>
+      <div class="editor-container">
+        <div id="sql-suggestion" class="suggestion-overlay"></div>
+        <textarea
+          id="sql-input"
+          placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
+          spellcheck="false"
+        >SELECT Name, COUNT(*) FROM Track</textarea>
+      </div>
+    </div>
+
+    <div class="editor-section output-section">
+      <label for="sql-output">
+        Transformed SQL (Auto GROUP BY applied)
+        <button id="copy-to-input-btn" class="inline-btn">↑ Copy to Input</button>
+      </label>
       <textarea
-        id="sql-input"
-        placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
+        id="sql-output"
         spellcheck="false"
-      >SELECT Name, COUNT(*) FROM Track</textarea>
+        readonly
+      ></textarea>
     </div>
 
     <div class="buttons">
