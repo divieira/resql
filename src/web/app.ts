@@ -6,13 +6,20 @@ let db: Database | null = null;
 let transformTimeout: number | null = null;
 let currentSuggestion = '';
 
-// DOM elements
+// DOM elements - Tab 1 (Separate Boxes)
 const sqlInput = document.getElementById('sql-input') as HTMLTextAreaElement;
 const sqlOutput = document.getElementById('sql-output') as HTMLTextAreaElement;
-const suggestionOverlay = document.getElementById('sql-suggestion') as HTMLDivElement;
 const executeBtn = document.getElementById('execute-btn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 const copyToInputBtn = document.getElementById('copy-to-input-btn') as HTMLButtonElement;
+
+// DOM elements - Tab 2 (Autocomplete)
+const sqlInputAutocomplete = document.getElementById('sql-input-autocomplete') as HTMLTextAreaElement;
+const suggestionOverlayAutocomplete = document.getElementById('sql-suggestion-autocomplete') as HTMLDivElement;
+const executeBtnAutocomplete = document.getElementById('execute-btn-autocomplete') as HTMLButtonElement;
+const clearBtnAutocomplete = document.getElementById('clear-btn-autocomplete') as HTMLButtonElement;
+
+// Shared elements
 const resultsDiv = document.getElementById('results') as HTMLDivElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 
@@ -43,7 +50,7 @@ async function initDatabase() {
   }
 }
 
-// Transform SQL in real-time (updates output textarea)
+// Tab 1: Transform SQL in real-time (updates output textarea)
 function transformSQL() {
   const originalSQL = sqlInput.value.trim();
 
@@ -71,12 +78,12 @@ function transformSQL() {
   }
 }
 
-// Update inline suggestion overlay (autocomplete style)
-function updateSuggestion() {
-  const originalSQL = sqlInput.value;
+// Tab 2: Update inline suggestion overlay (autocomplete style)
+function updateSuggestionAutocomplete() {
+  const originalSQL = sqlInputAutocomplete.value;
 
   if (!originalSQL.trim()) {
-    suggestionOverlay.innerHTML = '';
+    suggestionOverlayAutocomplete.innerHTML = '';
     currentSuggestion = '';
     return;
   }
@@ -85,7 +92,7 @@ function updateSuggestion() {
     const transformedSQL = addAutoGroupBy(originalSQL);
 
     if (transformedSQL === originalSQL) {
-      suggestionOverlay.innerHTML = '';
+      suggestionOverlayAutocomplete.innerHTML = '';
       currentSuggestion = '';
       return;
     }
@@ -118,34 +125,45 @@ function updateSuggestion() {
         }
       }
 
-      suggestionOverlay.innerHTML = html;
+      suggestionOverlayAutocomplete.innerHTML = html;
       currentSuggestion = transformedSQL;
     } else {
       // For complex transformations, don't show inline suggestion
-      suggestionOverlay.innerHTML = '';
+      suggestionOverlayAutocomplete.innerHTML = '';
       currentSuggestion = '';
     }
 
   } catch (error) {
     console.error('Suggestion error:', error);
-    suggestionOverlay.innerHTML = '';
+    suggestionOverlayAutocomplete.innerHTML = '';
     currentSuggestion = '';
   }
 }
 
-// Debounced transform on input
+// Tab 1: Debounced transform on input (separate boxes)
 sqlInput.addEventListener('input', () => {
   if (transformTimeout !== null) {
     clearTimeout(transformTimeout);
   }
 
   transformTimeout = window.setTimeout(() => {
-    transformSQL(); // Update output textarea
-    updateSuggestion(); // Update inline suggestion overlay
-  }, 300); // 300ms debounce
+    transformSQL();
+  }, 300);
 });
 
-// Execute SQL query
+// Tab 2: Debounced suggestion update on input (autocomplete)
+let autocompleteTimeout: number | null = null;
+sqlInputAutocomplete.addEventListener('input', () => {
+  if (autocompleteTimeout !== null) {
+    clearTimeout(autocompleteTimeout);
+  }
+
+  autocompleteTimeout = window.setTimeout(() => {
+    updateSuggestionAutocomplete();
+  }, 300);
+});
+
+// Tab 1: Execute SQL query (from separate boxes)
 async function executeQuery() {
   if (!db) {
     showStatus('Database not loaded yet. Please wait...', 'error');
@@ -154,6 +172,42 @@ async function executeQuery() {
 
   // Use transformed SQL if available, otherwise use input
   const sql = sqlOutput.value.trim() || sqlInput.value.trim();
+
+  if (!sql) {
+    showStatus('Please enter a SQL query', 'error');
+    return;
+  }
+
+  try {
+    showStatus('Executing query...', 'info');
+
+    const results = db.exec(sql);
+
+    if (results.length === 0) {
+      showStatus('Query executed successfully (no results)', 'success');
+      resultsDiv.innerHTML = '';
+      return;
+    }
+
+    // Display results
+    displayResults(results[0]);
+    showStatus(`Query executed successfully (${results[0].values.length} rows)`, 'success');
+
+  } catch (error) {
+    showStatus(`SQL Error: ${error}`, 'error');
+    resultsDiv.innerHTML = '';
+  }
+}
+
+// Tab 2: Execute SQL query (from autocomplete)
+async function executeQueryAutocomplete() {
+  if (!db) {
+    showStatus('Database not loaded yet. Please wait...', 'error');
+    return;
+  }
+
+  // Apply transformation if suggestion exists, otherwise use current input
+  const sql = currentSuggestion || addAutoGroupBy(sqlInputAutocomplete.value.trim());
 
   if (!sql) {
     showStatus('Please enter a SQL query', 'error');
@@ -229,68 +283,118 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
-// Copy transformed SQL to input
+// Tab 1: Copy transformed SQL to input
 copyToInputBtn.addEventListener('click', () => {
   sqlInput.value = sqlOutput.value;
   sqlInput.focus();
-  suggestionOverlay.innerHTML = '';
-  currentSuggestion = '';
-  transformSQL(); // Re-transform to update output
+  transformSQL();
 });
 
-// Clear input
+// Tab 1: Clear input
 clearBtn.addEventListener('click', () => {
   sqlInput.value = '';
   sqlOutput.value = '';
   sqlOutput.classList.remove('transformed');
-  suggestionOverlay.innerHTML = '';
-  currentSuggestion = '';
   resultsDiv.innerHTML = '';
   hideStatus();
   sqlInput.focus();
 });
 
-// Execute query
+// Tab 1: Execute query button
 executeBtn.addEventListener('click', executeQuery);
 
-// Execute on Ctrl/Cmd + Enter
+// Tab 1: Execute on Ctrl/Cmd + Enter
 sqlInput.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault();
     executeQuery();
   }
+});
+
+// Tab 2: Clear input (autocomplete)
+clearBtnAutocomplete.addEventListener('click', () => {
+  sqlInputAutocomplete.value = '';
+  suggestionOverlayAutocomplete.innerHTML = '';
+  currentSuggestion = '';
+  resultsDiv.innerHTML = '';
+  hideStatus();
+  sqlInputAutocomplete.focus();
+});
+
+// Tab 2: Execute query button (autocomplete)
+executeBtnAutocomplete.addEventListener('click', executeQueryAutocomplete);
+
+// Tab 2: Execute on Ctrl/Cmd + Enter and accept suggestion with Tab
+sqlInputAutocomplete.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    executeQueryAutocomplete();
+  }
 
   // Accept inline suggestion with Tab key
   if (e.key === 'Tab' && currentSuggestion) {
     e.preventDefault();
-    sqlInput.value = currentSuggestion;
-    suggestionOverlay.innerHTML = '';
+    sqlInputAutocomplete.value = currentSuggestion;
+    suggestionOverlayAutocomplete.innerHTML = '';
     currentSuggestion = '';
-
-    // Update output to match
-    transformSQL();
   }
 });
 
-// Load example queries
+// Tab switching
+document.querySelectorAll('.tab-button').forEach(button => {
+  button.addEventListener('click', () => {
+    const tabName = button.getAttribute('data-tab');
+
+    // Update active tab button
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+
+    // Update active tab content
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(`tab-${tabName}`)?.classList.add('active');
+
+    // Clear results when switching tabs
+    resultsDiv.innerHTML = '';
+    hideStatus();
+
+    // Focus appropriate input
+    if (tabName === 'separate') {
+      sqlInput.focus();
+    } else if (tabName === 'autocomplete') {
+      sqlInputAutocomplete.focus();
+      // Trigger initial suggestion
+      setTimeout(() => updateSuggestionAutocomplete(), 100);
+    }
+  });
+});
+
+// Load example queries (works with active tab)
 document.querySelectorAll('.example').forEach(el => {
   el.addEventListener('click', () => {
     const exampleSQL = el.getAttribute('data-sql');
-    if (exampleSQL) {
+    if (!exampleSQL) return;
+
+    // Check which tab is active
+    const activeTab = document.querySelector('.tab-content.active')?.id;
+
+    if (activeTab === 'tab-separate') {
+      // Tab 1: Separate boxes
       sqlInput.value = exampleSQL;
       sqlOutput.value = '';
       sqlOutput.classList.remove('transformed');
-      suggestionOverlay.innerHTML = '';
-      currentSuggestion = '';
       resultsDiv.innerHTML = '';
       hideStatus();
       sqlInput.focus();
-
-      // Trigger transformation after a short delay
-      setTimeout(() => {
-        transformSQL();
-        updateSuggestion();
-      }, 100);
+      setTimeout(() => transformSQL(), 100);
+    } else if (activeTab === 'tab-autocomplete') {
+      // Tab 2: Autocomplete
+      sqlInputAutocomplete.value = exampleSQL;
+      suggestionOverlayAutocomplete.innerHTML = '';
+      currentSuggestion = '';
+      resultsDiv.innerHTML = '';
+      hideStatus();
+      sqlInputAutocomplete.focus();
+      setTimeout(() => updateSuggestionAutocomplete(), 100);
     }
   });
 });

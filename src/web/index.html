@@ -275,40 +275,108 @@
       padding: 20px;
       color: #858585;
     }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #3c3c3c;
+    }
+
+    .tab-button {
+      padding: 10px 20px;
+      font-size: 14px;
+      background: transparent;
+      color: #858585;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: -2px;
+    }
+
+    .tab-button:hover {
+      color: #d4d4d4;
+      background: #2a2a2a;
+    }
+
+    .tab-button.active {
+      color: #4ec9b0;
+      border-bottom-color: #4ec9b0;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .experimental-badge {
+      font-size: 11px;
+      color: #ce9178;
+      font-weight: normal;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>reSQL</h1>
-    <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time (Press Tab to accept inline suggestions)</div>
+    <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time</div>
 
-    <div class="editor-section">
-      <label for="sql-input">Original SQL:</label>
-      <div class="editor-container">
-        <div id="sql-suggestion" class="suggestion-overlay"></div>
+    <div class="tabs">
+      <button class="tab-button active" data-tab="separate">Separate Boxes</button>
+      <button class="tab-button" data-tab="autocomplete">Autocomplete <span class="experimental-badge">(Experimental)</span></button>
+    </div>
+
+    <!-- Tab 1: Separate Input/Output Boxes -->
+    <div id="tab-separate" class="tab-content active">
+      <div class="editor-section">
+        <label for="sql-input">Original SQL:</label>
         <textarea
           id="sql-input"
           placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
           spellcheck="false"
         >SELECT Name, COUNT(*) FROM Track</textarea>
       </div>
+
+      <div class="editor-section output-section">
+        <label for="sql-output">
+          Transformed SQL (Auto GROUP BY applied)
+          <button id="copy-to-input-btn" class="inline-btn">↑ Copy to Input</button>
+        </label>
+        <textarea
+          id="sql-output"
+          spellcheck="false"
+          readonly
+        ></textarea>
+      </div>
+
+      <div class="buttons">
+        <button id="execute-btn">Execute Query</button>
+        <button id="clear-btn" class="secondary">Clear</button>
+      </div>
     </div>
 
-    <div class="editor-section output-section">
-      <label for="sql-output">
-        Transformed SQL (Auto GROUP BY applied)
-        <button id="copy-to-input-btn" class="inline-btn">↑ Copy to Input</button>
-      </label>
-      <textarea
-        id="sql-output"
-        spellcheck="false"
-        readonly
-      ></textarea>
-    </div>
+    <!-- Tab 2: Autocomplete (Experimental) -->
+    <div id="tab-autocomplete" class="tab-content">
+      <div class="editor-section">
+        <label for="sql-input-autocomplete">SQL Query <span class="experimental-badge">(Press Tab to accept greyed-out suggestions)</span>:</label>
+        <div class="editor-container">
+          <div id="sql-suggestion-autocomplete" class="suggestion-overlay"></div>
+          <textarea
+            id="sql-input-autocomplete"
+            placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
+            spellcheck="false"
+          >SELECT Name, COUNT(*) FROM Track</textarea>
+        </div>
+      </div>
 
-    <div class="buttons">
-      <button id="execute-btn">Execute Query</button>
-      <button id="clear-btn" class="secondary">Clear</button>
+      <div class="buttons">
+        <button id="execute-btn-autocomplete">Execute Query</button>
+        <button id="clear-btn-autocomplete" class="secondary">Clear</button>
+      </div>
     </div>
 
     <div class="results-section">
