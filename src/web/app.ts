@@ -1,12 +1,15 @@
 import initSqlJs, { Database } from 'sql.js';
 import { addAutoGroupBy } from '../core/auto-groupby';
+import { diffChars } from 'diff';
 
 let db: Database | null = null;
 let transformTimeout: number | null = null;
+let currentSuggestion = '';
 
 // DOM elements
 const sqlInput = document.getElementById('sql-input') as HTMLTextAreaElement;
 const sqlOutput = document.getElementById('sql-output') as HTMLTextAreaElement;
+const suggestionOverlay = document.getElementById('sql-suggestion') as HTMLDivElement;
 const executeBtn = document.getElementById('execute-btn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 const copyToInputBtn = document.getElementById('copy-to-input-btn') as HTMLButtonElement;
@@ -40,7 +43,7 @@ async function initDatabase() {
   }
 }
 
-// Transform SQL in real-time
+// Transform SQL in real-time (updates output textarea)
 function transformSQL() {
   const originalSQL = sqlInput.value.trim();
 
@@ -68,6 +71,68 @@ function transformSQL() {
   }
 }
 
+// Update inline suggestion overlay (autocomplete style)
+function updateSuggestion() {
+  const originalSQL = sqlInput.value;
+
+  if (!originalSQL.trim()) {
+    suggestionOverlay.innerHTML = '';
+    currentSuggestion = '';
+    return;
+  }
+
+  try {
+    const transformedSQL = addAutoGroupBy(originalSQL);
+
+    if (transformedSQL === originalSQL) {
+      suggestionOverlay.innerHTML = '';
+      currentSuggestion = '';
+      return;
+    }
+
+    // Calculate diff to show inline additions
+    const diff = diffChars(originalSQL, transformedSQL);
+
+    // Check if transformation is append-only (only additions at the end)
+    let isAppendOnly = true;
+    let hasRemovals = false;
+
+    for (const part of diff) {
+      if (part.removed) {
+        hasRemovals = true;
+        isAppendOnly = false;
+        break;
+      }
+    }
+
+    // Only show inline suggestion for append-only changes
+    if (isAppendOnly && !hasRemovals) {
+      let html = '';
+      for (const part of diff) {
+        if (part.added) {
+          // Show additions as greyed-out
+          html += `<span class="suggestion-addition">${escapeHtml(part.value)}</span>`;
+        } else {
+          // Show unchanged parts (will be covered by textarea)
+          html += `<span class="suggestion-text">${escapeHtml(part.value)}</span>`;
+        }
+      }
+
+      suggestionOverlay.innerHTML = html;
+      currentSuggestion = transformedSQL;
+    } else {
+      // For complex transformations, don't show inline suggestion
+      suggestionOverlay.innerHTML = '';
+      currentSuggestion = '';
+    }
+
+  } catch (error) {
+    console.error('Suggestion error:', error);
+    suggestionOverlay.innerHTML = '';
+    currentSuggestion = '';
+  }
+}
+
 // Debounced transform on input
 sqlInput.addEventListener('input', () => {
   if (transformTimeout !== null) {
@@ -75,7 +140,8 @@ sqlInput.addEventListener('input', () => {
   }
 
   transformTimeout = window.setTimeout(() => {
-    transformSQL();
+    transformSQL(); // Update output textarea
+    updateSuggestion(); // Update inline suggestion overlay
   }, 300); // 300ms debounce
 });
 
@@ -167,6 +233,8 @@ function escapeHtml(text: string): string {
 copyToInputBtn.addEventListener('click', () => {
   sqlInput.value = sqlOutput.value;
   sqlInput.focus();
+  suggestionOverlay.innerHTML = '';
+  currentSuggestion = '';
   transformSQL(); // Re-transform to update output
 });
 
@@ -175,6 +243,8 @@ clearBtn.addEventListener('click', () => {
   sqlInput.value = '';
   sqlOutput.value = '';
   sqlOutput.classList.remove('transformed');
+  suggestionOverlay.innerHTML = '';
+  currentSuggestion = '';
   resultsDiv.innerHTML = '';
   hideStatus();
   sqlInput.focus();
@@ -189,6 +259,17 @@ sqlInput.addEventListener('keydown', (e) => {
     e.preventDefault();
     executeQuery();
   }
+
+  // Accept inline suggestion with Tab key
+  if (e.key === 'Tab' && currentSuggestion) {
+    e.preventDefault();
+    sqlInput.value = currentSuggestion;
+    suggestionOverlay.innerHTML = '';
+    currentSuggestion = '';
+
+    // Update output to match
+    transformSQL();
+  }
 });
 
 // Load example queries
@@ -199,12 +280,17 @@ document.querySelectorAll('.example').forEach(el => {
       sqlInput.value = exampleSQL;
       sqlOutput.value = '';
       sqlOutput.classList.remove('transformed');
+      suggestionOverlay.innerHTML = '';
+      currentSuggestion = '';
       resultsDiv.innerHTML = '';
       hideStatus();
       sqlInput.focus();
 
       // Trigger transformation after a short delay
-      setTimeout(() => transformSQL(), 100);
+      setTimeout(() => {
+        transformSQL();
+        updateSuggestion();
+      }, 100);
     }
   });
 });

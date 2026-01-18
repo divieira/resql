@@ -73,19 +73,56 @@
       background: #2a2a2a;
     }
 
+    .editor-container {
+      position: relative;
+    }
+
+    .suggestion-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      pointer-events: none;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      color: transparent;
+      z-index: 0;
+      overflow: hidden;
+      line-height: 1.5;
+    }
+
+    .suggestion-text {
+      color: transparent;
+    }
+
+    .suggestion-addition {
+      color: #6a9955;
+      opacity: 0.5;
+    }
+
     textarea {
       width: 100%;
       min-height: 120px;
       padding: 12px;
       font-family: 'Consolas', 'Monaco', monospace;
       font-size: 14px;
-      background: #252526;
+      background: transparent;
       color: #d4d4d4;
       border: 1px solid #3c3c3c;
       border-radius: 4px;
       resize: vertical;
       outline: none;
       transition: border-color 0.2s;
+      position: relative;
+      z-index: 1;
+      line-height: 1.5;
+    }
+
+    #sql-input {
+      background: #252526;
     }
 
     textarea:focus {
@@ -243,15 +280,18 @@
 <body>
   <div class="container">
     <h1>reSQL</h1>
-    <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time</div>
+    <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time (Press Tab to accept inline suggestions)</div>
 
     <div class="editor-section">
       <label for="sql-input">Original SQL:</label>
-      <textarea
-        id="sql-input"
-        placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
-        spellcheck="false"
-      >SELECT Name, COUNT(*) FROM Track</textarea>
+      <div class="editor-container">
+        <div id="sql-suggestion" class="suggestion-overlay"></div>
+        <textarea
+          id="sql-input"
+          placeholder="Type your SQL query here... Try: SELECT Name, COUNT(*) FROM Artist"
+          spellcheck="false"
+        >SELECT Name, COUNT(*) FROM Track</textarea>
+      </div>
     </div>
 
     <div class="editor-section output-section">

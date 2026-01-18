@@ -10,10 +10,12 @@
     "test": "vitest"
   },
   "dependencies": {
+    "diff": "^8.0.3",
     "node-sql-parser": "^5.3.3",
     "sql.js": "^1.10.3"
   },
   "devDependencies": {
+    "@types/diff": "^7.0.2",
     "@types/node": "^20.11.5",
     "@types/sql.js": "^1.4.9",
     "typescript": "^5.3.3",
