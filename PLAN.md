@@ -38,7 +38,8 @@
    - Works with all SQL dialects (backticks, double quotes, square brackets)
 
 4. ✅ **Web UI**
-   - Single textarea with live transformation
+   - Dual-box interface (separate input/output)
+   - Inline diff-based suggestions with Tab to accept
    - Visual feedback when SQL is transformed
    - Execute queries against Chinook database (SQLite WASM)
    - Mobile-friendly responsive design
@@ -465,7 +466,7 @@ vscode-extension/
    - Easy to showcase features
 
 4. **Incremental complexity**
-   - Start with simple textarea (Phase 1) ✅
+   - Start with dual-box UI (Phase 1) ✅
    - Add autocomplete (Phase 2)
    - Then advanced features (Phases 3-8)
 
@@ -482,7 +483,7 @@ vscode-extension/
 
 - [x] Auto GROUP BY generation
 - [x] Real-time transformation
-- [x] Web UI with textarea
+- [x] Dual-box web UI with inline suggestions
 - [x] Chinook database demo
 - [x] Clean SQL output (no unnecessary quotes)
 - [x] Comprehensive tests

@@ -12,7 +12,7 @@ Automatically adds `GROUP BY` clauses when you use aggregate functions with non-
 
 - ✅ **Real-time AST analysis** - Uses proper SQL parsing, not regex
 - ✅ **Live transformation** - See changes as you type (300ms debounce)
-- ✅ **Single textarea UI** - Simple, clean interface
+- ✅ **Dual-box UI** - Separate input/output with inline suggestions
 - ✅ **Chinook database** - Test with real music store data
 - ✅ **Aggregate detection** - Supports SUM, COUNT, MIN, MAX, AVG, and more
 
@@ -112,42 +112,14 @@ WHERE Composer IS NOT NULL
 - Multi-database support
 - CLI and VS Code extension
 
-### Architecture Decisions
+### Architecture
 
-**Why TypeScript?**
-- Runs everywhere: Node (CLI), Browser (Web), VS Code
-- Strong typing for AST manipulation
-- Best SQL editor libraries available
+- **TypeScript** for cross-platform compatibility
+- **AST-based** transformation (no regex)
+- **SQLite dialect** via node-sql-parser
+- **Dual-box UI** with inline suggestions
 
-**Why AST introspection instead of regex?**
-- Accurate detection of aggregate functions
-- Handles nested expressions
-- Works with complex queries
-- Future-proof for more advanced features
-
-**Why single textarea?**
-- Simple, minimal UI
-- Works on mobile
-- No complex editor dependencies (yet)
-- Fast development iteration
-
-### Database Support
-
-Currently optimized for **SQLite** dialect. The parser supports:
-- MySQL, PostgreSQL, MariaDB
-- BigQuery, Redshift, Snowflake
-- DB2, Hive, TransactSQL
-
-**Note:** Oracle is not supported by node-sql-parser. For Oracle support, consider [oracle-sql-parser](https://github.com/1ilit/oracle-sql-parser).
-
-### Contributing
-
-This is a minimal, incremental project. We add complexity gradually:
-1. ✅ Auto GROUP BY (Phase 1)
-2. 🚧 Autocomplete (Phase 2)
-3. 📋 Navigation & Refactoring (Future)
-
-Keep it simple!
+See [PLAN.md](./PLAN.md) for detailed architecture decisions and design rationale.
 
 ### License
 
