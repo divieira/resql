@@ -2,6 +2,8 @@
 
 **ReSharper for SQL** - An intelligent SQL editor with real-time refactoring and smart completions.
 
+> 📋 **See [PLAN.md](./PLAN.md) for the complete development roadmap and architecture details.**
+
 ## Phase 1: Auto GROUP BY ✅
 
 Automatically adds `GROUP BY` clauses when you use aggregate functions with non-aggregated columns.
