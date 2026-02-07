@@ -1,7 +1,7 @@
 import initSqlJs, { Database } from 'sql.js';
 import { addAutoGroupBy } from '../core/auto-groupby';
 import { diffChars } from 'diff';
-import { improveQuery, hasApiKey, getApiKey, setApiKey } from '../core/llm-assistant';
+import { autocompleteQuery, hasApiKey, getApiKey, setApiKey } from '../core/llm-assistant';
 
 let db: Database | null = null;
 let transformTimeout: number | null = null;
@@ -140,11 +140,18 @@ sqlInput.addEventListener('input', () => {
   if (transformTimeout !== null) {
     clearTimeout(transformTimeout);
   }
+  // Cancel any pending AI request — user is still typing
+  cancelAi();
 
   transformTimeout = window.setTimeout(() => {
-    transformSQL(); // Update output textarea
-    updateSuggestion(); // Update inline suggestion overlay
-  }, 300); // 300ms debounce
+    transformSQL();
+    updateSuggestion();
+
+    // If no GROUP BY suggestion appeared, try AI autocomplete
+    if (!currentSuggestion) {
+      scheduleAiAutocomplete();
+    }
+  }, 300);
 });
 
 // Execute SQL query
@@ -268,9 +275,15 @@ sqlInput.addEventListener('keydown', (e) => {
     sqlInput.value = currentSuggestion;
     suggestionOverlay.innerHTML = '';
     currentSuggestion = '';
+    cancelAi();
 
     // Update output to match
     transformSQL();
+  }
+
+  // Dismiss AI suggestion with Escape
+  if (e.key === 'Escape') {
+    clearAiSuggestion();
   }
 });
 
@@ -297,32 +310,27 @@ document.querySelectorAll('.example').forEach(el => {
   });
 });
 
-// ---- AI Assistant ----
+// ---- AI Inline Autocomplete ----
 
-const aiImproveBtn = document.getElementById('ai-improve-btn') as HTMLButtonElement;
 const aiKeyBtn = document.getElementById('ai-key-btn') as HTMLButtonElement;
 const aiStatus = document.getElementById('ai-status') as HTMLSpanElement;
-const aiSuggestionPanel = document.getElementById('ai-suggestion-panel') as HTMLDivElement;
-const aiSuggestionSql = document.getElementById('ai-suggestion-sql') as HTMLTextAreaElement;
-const aiAcceptBtn = document.getElementById('ai-accept-btn') as HTMLButtonElement;
-const aiDismissBtn = document.getElementById('ai-dismiss-btn') as HTMLButtonElement;
-
-// Modal elements
 const apiKeyModal = document.getElementById('api-key-modal') as HTMLDivElement;
 const apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement;
 const apiKeySaveBtn = document.getElementById('api-key-save-btn') as HTMLButtonElement;
 const apiKeyCancelBtn = document.getElementById('api-key-cancel-btn') as HTMLButtonElement;
 const apiKeyClearBtn = document.getElementById('api-key-clear-btn') as HTMLButtonElement;
 
+let aiTimeout: number | null = null;
+const AI_DEBOUNCE_MS = 1000;
+
 function refreshAiState() {
   const configured = hasApiKey();
-  aiImproveBtn.disabled = !configured;
   aiKeyBtn.classList.toggle('configured', configured);
   if (configured) {
-    aiStatus.textContent = 'Ready';
+    aiStatus.textContent = 'AI autocomplete active (Tab to accept)';
     aiStatus.className = 'ai-status';
   } else {
-    aiStatus.textContent = 'Enter an OpenAI API key to enable';
+    aiStatus.textContent = 'Add an Anthropic API key to enable inline AI completions';
     aiStatus.className = 'ai-status';
   }
 }
@@ -354,7 +362,7 @@ apiKeyClearBtn.addEventListener('click', () => {
   setApiKey('');
   closeModal();
   refreshAiState();
-  dismissAiSuggestion();
+  clearAiSuggestion();
 });
 
 apiKeyInput.addEventListener('keydown', (e) => {
@@ -365,61 +373,77 @@ apiKeyInput.addEventListener('keydown', (e) => {
   }
 });
 
-// Improve query with AI
-aiImproveBtn.addEventListener('click', async () => {
-  const sql = sqlInput.value.trim();
-  if (!sql) {
-    aiStatus.textContent = 'Type a query first';
-    aiStatus.className = 'ai-status error';
-    return;
+// Cancel any in-flight AI request and pending timer
+function cancelAi() {
+  if (aiTimeout !== null) {
+    clearTimeout(aiTimeout);
+    aiTimeout = null;
   }
-
-  // Cancel any in-flight request
   if (aiAbortController) {
     aiAbortController.abort();
+    aiAbortController = null;
   }
-  aiAbortController = new AbortController();
-
-  aiImproveBtn.disabled = true;
-  aiStatus.textContent = 'Thinking...';
-  aiStatus.className = 'ai-status working';
-  dismissAiSuggestion();
-
-  const result = await improveQuery(sql, aiAbortController.signal);
-  aiAbortController = null;
-
-  if (result.success && result.query) {
-    aiSuggestionSql.value = result.query;
-    aiSuggestionPanel.classList.add('visible');
-    aiStatus.textContent = 'Suggestion ready';
-    aiStatus.className = 'ai-status';
-  } else {
-    aiStatus.textContent = result.error || 'Failed';
-    aiStatus.className = 'ai-status error';
-  }
-
-  aiImproveBtn.disabled = !hasApiKey();
-});
-
-// Accept AI suggestion
-aiAcceptBtn.addEventListener('click', () => {
-  const suggested = aiSuggestionSql.value;
-  if (suggested) {
-    sqlInput.value = suggested;
-    dismissAiSuggestion();
-    transformSQL();
-    updateSuggestion();
-    sqlInput.focus();
-  }
-});
-
-// Dismiss AI suggestion
-function dismissAiSuggestion() {
-  aiSuggestionPanel.classList.remove('visible');
-  aiSuggestionSql.value = '';
 }
 
-aiDismissBtn.addEventListener('click', dismissAiSuggestion);
+function clearAiSuggestion() {
+  cancelAi();
+  // Only clear if the current suggestion came from AI
+  if (currentSuggestion && suggestionOverlay.querySelector('.ai')) {
+    suggestionOverlay.innerHTML = '';
+    currentSuggestion = '';
+  }
+}
+
+// Show AI completion as inline ghost text (only if no GROUP BY suggestion is active)
+function showAiCompletion(prefix: string, completion: string) {
+  const prefixHtml = `<span class="suggestion-text">${escapeHtml(prefix)}</span>`;
+  const completionHtml = `<span class="suggestion-addition ai">${escapeHtml(completion)}</span>`;
+  suggestionOverlay.innerHTML = prefixHtml + completionHtml;
+  currentSuggestion = prefix + completion;
+}
+
+// Schedule an AI autocomplete request after the user pauses typing
+function scheduleAiAutocomplete() {
+  cancelAi();
+
+  // Don't run if no key or if a GROUP BY suggestion is already showing
+  if (!hasApiKey()) return;
+  if (currentSuggestion) return; // GROUP BY suggestion is active
+
+  const sql = sqlInput.value;
+  if (!sql.trim()) return;
+
+  aiTimeout = window.setTimeout(async () => {
+    // Re-check: user may have typed more or GROUP BY kicked in
+    const currentText = sqlInput.value;
+    if (currentText !== sql) return;
+    if (currentSuggestion) return;
+
+    aiAbortController = new AbortController();
+    aiStatus.textContent = 'Thinking...';
+    aiStatus.className = 'ai-status working';
+
+    const result = await autocompleteQuery(sql, aiAbortController.signal);
+    aiAbortController = null;
+
+    // Stale check: input changed while we were waiting
+    if (sqlInput.value !== sql) {
+      refreshAiState();
+      return;
+    }
+
+    if (result.success && result.completion) {
+      showAiCompletion(sql, result.completion);
+      aiStatus.textContent = 'Suggestion ready (Tab to accept)';
+      aiStatus.className = 'ai-status';
+    } else if (result.error && result.error !== 'Cancelled.') {
+      aiStatus.textContent = result.error;
+      aiStatus.className = 'ai-status error';
+    } else {
+      refreshAiState();
+    }
+  }, AI_DEBOUNCE_MS);
+}
 
 // Initialize AI state on load
 refreshAiState();

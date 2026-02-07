@@ -1,8 +1,7 @@
-const STORAGE_KEY = 'resql_openai_api_key';
-const DEFAULT_MODEL = 'gpt-4o-mini';
+const STORAGE_KEY = 'resql_anthropic_api_key';
+const MODEL = 'claude-sonnet-4-5-20250929';
 
-const SYSTEM_PROMPT = `You are a SQL query assistant for a SQLite database (Chinook music database).
-Your job is to improve, autocomplete, or fix the user's SQL query.
+const SYSTEM_PROMPT = `You are a SQL autocomplete engine for a SQLite database (Chinook music database).
 
 Database schema:
 - Artist(ArtistId, Name)
@@ -18,13 +17,13 @@ Database schema:
 - InvoiceLine(InvoiceLineId, InvoiceId, TrackId, UnitPrice, Quantity)
 
 Rules:
-- Return ONLY the improved SQL query, no explanation.
-- If the query is incomplete, complete it logically.
-- If the query has errors, fix them.
-- If the query can be improved (better joins, missing clauses, etc.), improve it.
-- Use proper SQLite syntax.
-- Keep the user's intent — don't change what the query is trying to do.
-- Do NOT wrap the output in markdown code fences.`;
+- The user is typing a SQL query. Predict what comes next.
+- Return ONLY the text that should be appended after the user's cursor.
+- Do NOT repeat any part of the user's input.
+- Keep completions concise — finish the current clause or add the next logical one.
+- If the query looks complete, return an empty string.
+- Use proper SQLite syntax and valid column/table names from the schema above.
+- No markdown, no explanation, no code fences.`;
 
 export function getApiKey(): string | null {
   return localStorage.getItem(STORAGE_KEY);
@@ -43,40 +42,42 @@ export function hasApiKey(): boolean {
   return key !== null && key.length > 0;
 }
 
-export interface LLMResult {
+export interface AutocompleteResult {
   success: boolean;
-  query?: string;
+  completion?: string;
   error?: string;
 }
 
-export async function improveQuery(
+export async function autocompleteQuery(
   sql: string,
   signal?: AbortSignal
-): Promise<LLMResult> {
+): Promise<AutocompleteResult> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    return { success: false, error: 'No API key configured. Click the key icon to add your OpenAI API key.' };
+    return { success: false, error: 'No API key configured.' };
   }
 
   if (!sql.trim()) {
-    return { success: false, error: 'No query to improve.' };
+    return { success: false, error: 'Empty query.' };
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
+        model: MODEL,
+        max_tokens: 256,
+        system: SYSTEM_PROMPT,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: sql },
         ],
         temperature: 0.2,
-        max_tokens: 512,
       }),
       signal,
     });
@@ -88,16 +89,12 @@ export async function improveQuery(
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content?.trim();
+    const text = data.content?.[0]?.text ?? '';
 
-    if (!content) {
-      return { success: false, error: 'Empty response from API.' };
-    }
-
-    return { success: true, query: content };
+    return { success: true, completion: text };
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      return { success: false, error: 'Request cancelled.' };
+      return { success: false, error: 'Cancelled.' };
     }
     return { success: false, error: err.message || 'Unknown error.' };
   }

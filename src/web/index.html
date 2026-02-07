@@ -103,6 +103,11 @@
       opacity: 0.5;
     }
 
+    .suggestion-addition.ai {
+      color: #c586c0;
+      opacity: 0.45;
+    }
+
     textarea {
       width: 100%;
       min-height: 120px;
@@ -282,41 +287,29 @@
       align-items: center;
       gap: 10px;
       margin-bottom: 20px;
-      padding: 10px 14px;
+      padding: 8px 14px;
       background: #252526;
       border: 1px solid #3c3c3c;
       border-radius: 4px;
     }
 
     .ai-bar-label {
-      font-size: 13px;
+      font-size: 12px;
       color: #c586c0;
       font-weight: 600;
       white-space: nowrap;
     }
 
     .ai-bar button {
-      padding: 6px 14px;
-      font-size: 13px;
-    }
-
-    #ai-improve-btn {
-      background: #68217a;
-    }
-    #ai-improve-btn:hover {
-      background: #7e2d91;
-    }
-    #ai-improve-btn:disabled {
-      background: #3c3c3c;
-      color: #858585;
-      cursor: not-allowed;
+      padding: 5px 12px;
+      font-size: 12px;
     }
 
     #ai-key-btn {
       background: transparent;
       border: 1px solid #3c3c3c;
       color: #9cdcfe;
-      padding: 6px 10px;
+      padding: 5px 10px;
       margin-left: auto;
     }
     #ai-key-btn:hover {
@@ -402,71 +395,6 @@
       padding: 8px 16px;
       font-size: 13px;
     }
-
-    /* AI suggestion panel */
-    .ai-suggestion-panel {
-      display: none;
-      margin-top: 10px;
-      padding: 12px;
-      background: #1a1a2e;
-      border: 1px solid #68217a;
-      border-radius: 4px;
-      position: relative;
-    }
-    .ai-suggestion-panel.visible {
-      display: block;
-    }
-
-    .ai-suggestion-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
-    .ai-suggestion-header span {
-      font-size: 12px;
-      color: #c586c0;
-      font-weight: 600;
-    }
-
-    .ai-suggestion-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .ai-suggestion-actions button {
-      padding: 4px 12px;
-      font-size: 12px;
-    }
-
-    #ai-accept-btn {
-      background: #68217a;
-    }
-    #ai-accept-btn:hover {
-      background: #7e2d91;
-    }
-
-    #ai-dismiss-btn {
-      background: #3c3c3c;
-    }
-    #ai-dismiss-btn:hover {
-      background: #505050;
-    }
-
-    #ai-suggestion-sql {
-      width: 100%;
-      min-height: 60px;
-      padding: 8px;
-      font-family: 'Consolas', 'Monaco', monospace;
-      font-size: 14px;
-      background: #141427;
-      color: #ce9178;
-      border: none;
-      border-radius: 3px;
-      resize: vertical;
-      outline: none;
-    }
   </style>
 </head>
 <body>
@@ -475,10 +403,9 @@
     <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time (Press Tab to accept inline suggestions)</div>
 
     <div class="ai-bar">
-      <span class="ai-bar-label">AI Assistant</span>
-      <button id="ai-improve-btn" disabled>Improve Query</button>
-      <span id="ai-status" class="ai-status">Enter an OpenAI API key to enable</span>
-      <button id="ai-key-btn" title="Configure API key">API Key</button>
+      <span class="ai-bar-label">AI Autocomplete</span>
+      <span id="ai-status" class="ai-status">Add an Anthropic API key to enable inline AI completions</span>
+      <button id="ai-key-btn" title="Configure Anthropic API key">API Key</button>
     </div>
 
     <div class="editor-section">
@@ -503,17 +430,6 @@
         spellcheck="false"
         readonly
       ></textarea>
-    </div>
-
-    <div id="ai-suggestion-panel" class="ai-suggestion-panel">
-      <div class="ai-suggestion-header">
-        <span>AI Suggestion</span>
-        <div class="ai-suggestion-actions">
-          <button id="ai-accept-btn">Accept</button>
-          <button id="ai-dismiss-btn" class="secondary">Dismiss</button>
-        </div>
-      </div>
-      <textarea id="ai-suggestion-sql" readonly></textarea>
     </div>
 
     <div class="buttons">
@@ -543,15 +459,16 @@
   <!-- API Key Modal -->
   <div id="api-key-modal" class="modal-overlay">
     <div class="modal">
-      <h3>OpenAI API Key</h3>
+      <h3>Anthropic API Key</h3>
       <p>
         Your key is stored only in this browser's localStorage and sent directly
-        to the OpenAI API. It never touches any other server.
+        to the Anthropic API. It never touches any other server. AI autocomplete
+        uses Claude Sonnet to suggest query completions as you type.
       </p>
       <input
         id="api-key-input"
         type="password"
-        placeholder="sk-..."
+        placeholder="sk-ant-..."
         autocomplete="off"
       />
       <div class="modal-buttons">
