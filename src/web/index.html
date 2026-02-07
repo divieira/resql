@@ -275,12 +275,211 @@
       padding: 20px;
       color: #858585;
     }
+
+    /* AI Assistant styles */
+    .ai-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+    }
+
+    .ai-bar-label {
+      font-size: 13px;
+      color: #c586c0;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .ai-bar button {
+      padding: 6px 14px;
+      font-size: 13px;
+    }
+
+    #ai-improve-btn {
+      background: #68217a;
+    }
+    #ai-improve-btn:hover {
+      background: #7e2d91;
+    }
+    #ai-improve-btn:disabled {
+      background: #3c3c3c;
+      color: #858585;
+      cursor: not-allowed;
+    }
+
+    #ai-key-btn {
+      background: transparent;
+      border: 1px solid #3c3c3c;
+      color: #9cdcfe;
+      padding: 6px 10px;
+      margin-left: auto;
+    }
+    #ai-key-btn:hover {
+      background: #3c3c3c;
+    }
+    #ai-key-btn.configured {
+      border-color: #4ec9b0;
+      color: #4ec9b0;
+    }
+
+    .ai-status {
+      font-size: 12px;
+      color: #858585;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-status.error { color: #f48771; }
+    .ai-status.working { color: #dcdcaa; }
+
+    /* API key modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 6px;
+      padding: 24px;
+      width: 460px;
+      max-width: 90vw;
+    }
+
+    .modal h3 {
+      font-size: 16px;
+      color: #c586c0;
+      margin-bottom: 12px;
+    }
+
+    .modal p {
+      font-size: 13px;
+      color: #858585;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .modal input[type="password"] {
+      width: 100%;
+      padding: 8px 12px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      outline: none;
+      margin-bottom: 16px;
+    }
+    .modal input[type="password"]:focus {
+      border-color: #007acc;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .modal-buttons button {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    /* AI suggestion panel */
+    .ai-suggestion-panel {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      background: #1a1a2e;
+      border: 1px solid #68217a;
+      border-radius: 4px;
+      position: relative;
+    }
+    .ai-suggestion-panel.visible {
+      display: block;
+    }
+
+    .ai-suggestion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .ai-suggestion-header span {
+      font-size: 12px;
+      color: #c586c0;
+      font-weight: 600;
+    }
+
+    .ai-suggestion-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ai-suggestion-actions button {
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    #ai-accept-btn {
+      background: #68217a;
+    }
+    #ai-accept-btn:hover {
+      background: #7e2d91;
+    }
+
+    #ai-dismiss-btn {
+      background: #3c3c3c;
+    }
+    #ai-dismiss-btn:hover {
+      background: #505050;
+    }
+
+    #ai-suggestion-sql {
+      width: 100%;
+      min-height: 60px;
+      padding: 8px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      background: #141427;
+      color: #ce9178;
+      border: none;
+      border-radius: 3px;
+      resize: vertical;
+      outline: none;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>reSQL</h1>
     <div class="subtitle">Auto GROUP BY Demo - Type SQL and watch it transform in real-time (Press Tab to accept inline suggestions)</div>
+
+    <div class="ai-bar">
+      <span class="ai-bar-label">AI Assistant</span>
+      <button id="ai-improve-btn" disabled>Improve Query</button>
+      <span id="ai-status" class="ai-status">Enter an OpenAI API key to enable</span>
+      <button id="ai-key-btn" title="Configure API key">API Key</button>
+    </div>
 
     <div class="editor-section">
       <label for="sql-input">Original SQL:</label>
@@ -306,6 +505,17 @@
       ></textarea>
     </div>
 
+    <div id="ai-suggestion-panel" class="ai-suggestion-panel">
+      <div class="ai-suggestion-header">
+        <span>AI Suggestion</span>
+        <div class="ai-suggestion-actions">
+          <button id="ai-accept-btn">Accept</button>
+          <button id="ai-dismiss-btn" class="secondary">Dismiss</button>
+        </div>
+      </div>
+      <textarea id="ai-suggestion-sql" readonly></textarea>
+    </div>
+
     <div class="buttons">
       <button id="execute-btn">Execute Query</button>
       <button id="clear-btn" class="secondary">Clear</button>
@@ -326,6 +536,28 @@
       </div>
       <div class="example" data-sql="SELECT Composer, MIN(Milliseconds), MAX(Milliseconds) FROM Track WHERE Composer IS NOT NULL">
         With WHERE: SELECT Composer, MIN(Milliseconds), MAX(Milliseconds) FROM Track WHERE Composer IS NOT NULL
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="api-key-modal" class="modal-overlay">
+    <div class="modal">
+      <h3>OpenAI API Key</h3>
+      <p>
+        Your key is stored only in this browser's localStorage and sent directly
+        to the OpenAI API. It never touches any other server.
+      </p>
+      <input
+        id="api-key-input"
+        type="password"
+        placeholder="sk-..."
+        autocomplete="off"
+      />
+      <div class="modal-buttons">
+        <button id="api-key-clear-btn" class="secondary">Remove Key</button>
+        <button id="api-key-cancel-btn" class="secondary">Cancel</button>
+        <button id="api-key-save-btn">Save</button>
       </div>
     </div>
   </div>

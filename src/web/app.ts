@@ -1,10 +1,12 @@
 import initSqlJs, { Database } from 'sql.js';
 import { addAutoGroupBy } from '../core/auto-groupby';
 import { diffChars } from 'diff';
+import { improveQuery, hasApiKey, getApiKey, setApiKey } from '../core/llm-assistant';
 
 let db: Database | null = null;
 let transformTimeout: number | null = null;
 let currentSuggestion = '';
+let aiAbortController: AbortController | null = null;
 
 // DOM elements
 const sqlInput = document.getElementById('sql-input') as HTMLTextAreaElement;
@@ -294,6 +296,133 @@ document.querySelectorAll('.example').forEach(el => {
     }
   });
 });
+
+// ---- AI Assistant ----
+
+const aiImproveBtn = document.getElementById('ai-improve-btn') as HTMLButtonElement;
+const aiKeyBtn = document.getElementById('ai-key-btn') as HTMLButtonElement;
+const aiStatus = document.getElementById('ai-status') as HTMLSpanElement;
+const aiSuggestionPanel = document.getElementById('ai-suggestion-panel') as HTMLDivElement;
+const aiSuggestionSql = document.getElementById('ai-suggestion-sql') as HTMLTextAreaElement;
+const aiAcceptBtn = document.getElementById('ai-accept-btn') as HTMLButtonElement;
+const aiDismissBtn = document.getElementById('ai-dismiss-btn') as HTMLButtonElement;
+
+// Modal elements
+const apiKeyModal = document.getElementById('api-key-modal') as HTMLDivElement;
+const apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement;
+const apiKeySaveBtn = document.getElementById('api-key-save-btn') as HTMLButtonElement;
+const apiKeyCancelBtn = document.getElementById('api-key-cancel-btn') as HTMLButtonElement;
+const apiKeyClearBtn = document.getElementById('api-key-clear-btn') as HTMLButtonElement;
+
+function refreshAiState() {
+  const configured = hasApiKey();
+  aiImproveBtn.disabled = !configured;
+  aiKeyBtn.classList.toggle('configured', configured);
+  if (configured) {
+    aiStatus.textContent = 'Ready';
+    aiStatus.className = 'ai-status';
+  } else {
+    aiStatus.textContent = 'Enter an OpenAI API key to enable';
+    aiStatus.className = 'ai-status';
+  }
+}
+
+// Modal open/close
+aiKeyBtn.addEventListener('click', () => {
+  apiKeyInput.value = getApiKey() || '';
+  apiKeyModal.classList.add('open');
+  apiKeyInput.focus();
+});
+
+function closeModal() {
+  apiKeyModal.classList.remove('open');
+  apiKeyInput.value = '';
+}
+
+apiKeyCancelBtn.addEventListener('click', closeModal);
+apiKeyModal.addEventListener('click', (e) => {
+  if (e.target === apiKeyModal) closeModal();
+});
+
+apiKeySaveBtn.addEventListener('click', () => {
+  setApiKey(apiKeyInput.value);
+  closeModal();
+  refreshAiState();
+});
+
+apiKeyClearBtn.addEventListener('click', () => {
+  setApiKey('');
+  closeModal();
+  refreshAiState();
+  dismissAiSuggestion();
+});
+
+apiKeyInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    apiKeySaveBtn.click();
+  } else if (e.key === 'Escape') {
+    closeModal();
+  }
+});
+
+// Improve query with AI
+aiImproveBtn.addEventListener('click', async () => {
+  const sql = sqlInput.value.trim();
+  if (!sql) {
+    aiStatus.textContent = 'Type a query first';
+    aiStatus.className = 'ai-status error';
+    return;
+  }
+
+  // Cancel any in-flight request
+  if (aiAbortController) {
+    aiAbortController.abort();
+  }
+  aiAbortController = new AbortController();
+
+  aiImproveBtn.disabled = true;
+  aiStatus.textContent = 'Thinking...';
+  aiStatus.className = 'ai-status working';
+  dismissAiSuggestion();
+
+  const result = await improveQuery(sql, aiAbortController.signal);
+  aiAbortController = null;
+
+  if (result.success && result.query) {
+    aiSuggestionSql.value = result.query;
+    aiSuggestionPanel.classList.add('visible');
+    aiStatus.textContent = 'Suggestion ready';
+    aiStatus.className = 'ai-status';
+  } else {
+    aiStatus.textContent = result.error || 'Failed';
+    aiStatus.className = 'ai-status error';
+  }
+
+  aiImproveBtn.disabled = !hasApiKey();
+});
+
+// Accept AI suggestion
+aiAcceptBtn.addEventListener('click', () => {
+  const suggested = aiSuggestionSql.value;
+  if (suggested) {
+    sqlInput.value = suggested;
+    dismissAiSuggestion();
+    transformSQL();
+    updateSuggestion();
+    sqlInput.focus();
+  }
+});
+
+// Dismiss AI suggestion
+function dismissAiSuggestion() {
+  aiSuggestionPanel.classList.remove('visible');
+  aiSuggestionSql.value = '';
+}
+
+aiDismissBtn.addEventListener('click', dismissAiSuggestion);
+
+// Initialize AI state on load
+refreshAiState();
 
 // Initialize on page load
 initDatabase();
